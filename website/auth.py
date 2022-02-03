@@ -1,33 +1,55 @@
-from flask import Blueprint,render_template,request,flash
+from flask import Blueprint, render_template, request, flash,redirect,url_for
+from .models import User
+from werkzeug.security import generate_password_hash,check_password_hash
+from . import db
 
-auth=Blueprint('auth',__name__)
+auth = Blueprint('auth', __name__)
+
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    data=request.form
-    print(data)
-    return render_template("login.html",text="Test",user="C0mplex")
+   if request.method=='POST':
+       email=request.form.get('email')
+       password=request.form.get('password')
+
+       user=User.query.filter_by(email=email).first()
+       if user:
+           if check_password_hash(user.password,password):
+               flash('Tizimga kirdingiz', category='success')
+               return redirect(url_for('views.home'))
+           else:
+               flash('Parolingiz noto`g`ri, yana urinib ko`ring',category='error')
+       else:
+           flash('Pochta mavjud emas', category='error')
+
+   return render_template("login.html", text="Test", user="C0mplex")
+
 
 @auth.route('/logout')
 def logout():
     return "<p>Logout</p>"
 
+
 @auth.route('sign-up', methods=['GET', 'POST'])
 def sign_up():
-    if request.method=="POST":
-        email=request.form.get('email')
-        firstName=request.form.get('firstName')
-        password1=request.form.get('password1')
-        password2=request.form.get('password2')
-        if len(email)<4:
-            flash('Email 4 ta belgidan ko`p bo`lishi kerak.',category='error')
-        elif len(firstName)<2:
+    if request.method == "POST":
+        email = request.form.get('email')
+        first_name = request.form.get('firstName')
+        password1 = request.form.get('password1')
+        password2 = request.form.get('password2')
+        if len(email) < 4:
+            flash('Email 4 ta belgidan ko`p bo`lishi kerak.', category='error')
+        elif len(first_name) < 2:
             flash('Ism 2 ta belgidan ko`p bo`lishi kerak.', category='error')
-        elif password1!=password2:
+        elif password1 != password2:
             flash('Parollar bir-biriga mos kelmaydi.', category='error')
 
-        elif len(password1)<7:
-            flash('Parol 7 ta belgina ko`p bo`lishi kerak.', category='error')
+        elif len(password1) < 7:
+            flash('Parol 7 ta belgidan ko`p bo`lishi kerak.', category='error')
         else:
+            new_user=User(email=email, first_name=first_name, password=generate_password_hash(password1, method='sha256'))
+            db.session.add(new_user)
+            db.session.commit()
             flash('Ro`yxatdan o`tdingiz', category='success')
+            return redirect(url_for('views.home'))
     return render_template("sign_up.html")
